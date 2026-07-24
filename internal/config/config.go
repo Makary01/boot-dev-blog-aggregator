@@ -7,7 +7,7 @@ import (
 )
 
 const CONFIG_FILE_NAME = ".gatorconfig.json"
-const CONFIG_TMP_FILE_NAME = ".gatorconfig.json"
+const CONFIG_TMP_FILE_NAME = ".gatorconfig.json.tmp"
 
 type Config struct {
 	DBURL           string `json:"db_url"`
@@ -36,20 +36,16 @@ func Read() (*Config, error) {
 	return config, nil
 }
 
-func SetUser(userName string) error {
-	cfg, err := Read()
-	if err != nil {
-		return err
-	}
+func (cfg *Config) SetUser(userName string) error {
 	cfg.CurrentUserName = userName
 
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
-	filePath := filepath.Join(home, CONFIG_TMP_FILE_NAME)
+	tmpFilePath := filepath.Join(home, CONFIG_TMP_FILE_NAME)
 
-	tmp, err := os.Create(filePath)
+	tmp, err := os.Create(tmpFilePath)
 	if err != nil {
 		return err
 	}
@@ -65,5 +61,6 @@ func SetUser(userName string) error {
 		return err
 	}
 
-	return os.Rename(CONFIG_TMP_FILE_NAME, CONFIG_FILE_NAME)
+	filePath := filepath.Join(home, CONFIG_FILE_NAME)
+	return os.Rename(tmpFilePath, filePath)
 }
