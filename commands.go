@@ -108,7 +108,34 @@ func handlerAgg(_ *state, cmd command) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%v", feed)
+	fmt.Printf("%v\n", feed)
+	return nil
+}
+
+func handlerAddFeed(s *state, cmd command) error {
+	if err := checkArgsLen(cmd.args, 2); err != nil {
+		return err
+	}
+
+	user, err := s.db.GetUser(context.Background(), s.config.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	params := database.CreateFeedParams{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Name:      cmd.args[0],
+		Url:       cmd.args[1],
+	}
+	feed, err := s.db.CreateFeed(context.Background(), params)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%v\n", feed)
 	return nil
 }
 
