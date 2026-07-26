@@ -21,13 +21,13 @@ type state struct {
 func main() {
 	cfg, err := config.Read()
 	if err != nil {
-		fmt.Printf("Error reading config: %v", err.Error())
+		fmt.Printf("Error reading config: %v\n", err.Error())
 		os.Exit(1)
 	}
 
 	db, err := sql.Open("postgres", cfg.DBURL)
 	if err != nil {
-		fmt.Printf("Error reading config: %v", err.Error())
+		fmt.Printf("Error reading config: %v\n", err.Error())
 		os.Exit(1)
 	}
 
@@ -44,13 +44,13 @@ func main() {
 
 	args := os.Args[1:]
 	if len(args) != 2 {
-		fmt.Printf("Expected 2 argument, got: %v", len(args))
+		fmt.Printf("Expected 2 argument, got: %v\n", len(args))
 		os.Exit(1)
 	}
 
 	err = cmds.run(s, command{name: args[0], args: args[1:]})
 	if err != nil {
-		fmt.Printf("Error running command: %v", err.Error())
+		fmt.Printf("Error running command: %v\n", err.Error())
 		os.Exit(1)
 	}
 }
@@ -59,7 +59,12 @@ func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) != 1 {
 		return fmt.Errorf("expected '1' argument, got '%v'", len(cmd.args))
 	}
-	err := s.config.SetUser(cmd.args[0])
+	_, err := s.db.GetUser(context.Background(), cmd.args[0])
+	if err != nil {
+		return err
+	}
+
+	err = s.config.SetUser(cmd.args[0])
 	if err != nil {
 		return err
 	}
@@ -82,7 +87,7 @@ func handlerRegister(s *state, cmd command) error {
 		return err
 	}
 
-	fmt.Printf("user created: %v", user)
+	fmt.Printf("User created: %v", user)
 
 	err = s.config.SetUser(user.Name)
 	if err != nil {
