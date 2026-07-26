@@ -112,13 +112,8 @@ func handlerAgg(_ *state, cmd command) error {
 	return nil
 }
 
-func handlerAddFeed(s *state, cmd command) error {
+func handlerAddFeed(s *state, cmd command, user database.User) error {
 	if err := checkArgsLen(cmd.args, 2); err != nil {
-		return err
-	}
-
-	user, err := s.db.GetUser(context.Background(), s.config.CurrentUserName)
-	if err != nil {
 		return err
 	}
 
@@ -141,7 +136,7 @@ func handlerAddFeed(s *state, cmd command) error {
 		name: "follow",
 		args: []string{cmd.args[1]},
 	}
-	return handlerFollow(s, followCmd)
+	return handlerFollow(s, followCmd, user)
 }
 
 func handlerFeeds(s *state, cmd command) error {
@@ -160,7 +155,7 @@ func handlerFeeds(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollow(s *state, cmd command) error {
+func handlerFollow(s *state, cmd command, user database.User) error {
 	if err := checkArgsLen(cmd.args, 1); err != nil {
 		return err
 	}
@@ -192,7 +187,7 @@ func handlerFollow(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollowing(s *state, cmd command) error {
+func handlerFollowing(s *state, cmd command, user database.User) error {
 	if err := checkArgsLen(cmd.args, 0); err != nil {
 		return err
 	}
@@ -208,9 +203,31 @@ func handlerFollowing(s *state, cmd command) error {
 	return nil
 }
 
+func handlerUnfollow(s *state, cmd command, user database.User) error {
+	if err := checkArgsLen(cmd.args, 1); err != nil {
+		return err
+	}
+
+	return s.db.DeleteFeedFollowing(
+		context.Background(),
+		database.DeleteFeedFollowingParams{Name: user.Name, Url: cmd.args[0]},
+	)
+}
+
 func checkArgsLen(args []string, expected int) error {
 	if len(args) != expected {
 		return fmt.Errorf("expected '%v' argument, got '%v'\n", expected, len(args))
 	}
 	return nil
+}
+
+func ensureLoggedIn(handler func(s *state, cmd command, user database.User) error) func(*state, command) error {
+	return func(s *state, cmd command) error {
+		u, err := s.db.GetUser(context.Background(), s.config.CurrentUserName)
+		if err != nil {
+			fmt.Println("You must be logged in to use this command!")
+			return err
+		}
+		return handler(s, cmd, u)
+	}
 }
