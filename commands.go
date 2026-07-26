@@ -100,6 +100,18 @@ func handlerUsers(s *state, cmd command) error {
 	return nil
 }
 
+func handlerAgg(_ *state, cmd command) error {
+	if err := checkArgsLen(cmd.args, 0); err != nil {
+		return err
+	}
+	feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%v", feed)
+	return nil
+}
+
 func checkArgsLen(args []string, expected int) error {
 	if len(args) != expected {
 		return fmt.Errorf("expected '%v' argument, got '%v'\n", expected, len(args))
