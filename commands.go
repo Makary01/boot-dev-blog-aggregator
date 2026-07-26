@@ -136,7 +136,12 @@ func handlerAddFeed(s *state, cmd command) error {
 	}
 
 	fmt.Printf("%v\n", feed)
-	return nil
+
+	followCmd := command{
+		name: "follow",
+		args: []string{cmd.args[1]},
+	}
+	return handlerFollow(s, followCmd)
 }
 
 func handlerFeeds(s *state, cmd command) error {
@@ -150,6 +155,55 @@ func handlerFeeds(s *state, cmd command) error {
 
 	for _, f := range feeds {
 		fmt.Printf("`%s` - %s, created by: %s\n", f.Name, f.Url, f.CreatedByName.String)
+	}
+
+	return nil
+}
+
+func handlerFollow(s *state, cmd command) error {
+	if err := checkArgsLen(cmd.args, 1); err != nil {
+		return err
+	}
+
+	user, err := s.db.GetUser(context.Background(), s.config.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	feed, err := s.db.GetFeed(context.Background(), cmd.args[0])
+	if err != nil {
+		return err
+	}
+
+	params := database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID:    user.ID,
+		FeedID:    feed.ID,
+	}
+
+	feedFollow, err := s.db.CreateFeedFollow(context.Background(), params)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("`%s` is now followed by %s\n", feedFollow.FeedName, feedFollow.UserName)
+	return nil
+}
+
+func handlerFollowing(s *state, cmd command) error {
+	if err := checkArgsLen(cmd.args, 0); err != nil {
+		return err
+	}
+
+	followings, err := s.db.GetFeedFollowings(context.Background(), s.config.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	for _, f := range followings {
+		fmt.Println(f.FeedName)
 	}
 	return nil
 }

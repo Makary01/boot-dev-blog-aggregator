@@ -14,4 +14,11 @@ RETURNING *;
 SELECT feeds.id, feeds.name, feeds.url, users.name AS created_by_name 
 FROM feeds 
 LEFT JOIN users 
-    ON feeds.user_id = users.id ;
+    ON feeds.user_id = users.id;
+
+-- name: GetFeed :one
+SELECT feeds.id, feeds.name, feeds.url, users.name AS created_by_name 
+FROM feeds 
+LEFT JOIN users 
+    ON feeds.user_id = users.id 
+WHERE feeds.url = $1;
