@@ -81,6 +81,25 @@ func handlerReset(s *state, cmd command) error {
 	return nil
 }
 
+func handlerUsers(s *state, cmd command) error {
+	if err := checkArgsLen(cmd.args, 0); err != nil {
+		return err
+	}
+	users, err := s.db.GetUsers(context.Background())
+	if err != nil {
+		return err
+	}
+
+	for _, u := range users {
+		line := u.Name
+		if u.Name == s.config.CurrentUserName {
+			line += " (current)"
+		}
+		fmt.Println(line)
+	}
+	return nil
+}
+
 func checkArgsLen(args []string, expected int) error {
 	if len(args) != expected {
 		return fmt.Errorf("expected '%v' argument, got '%v'\n", expected, len(args))

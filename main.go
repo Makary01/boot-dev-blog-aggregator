@@ -38,6 +38,7 @@ func main() {
 	cmds.register("login", handlerLogin)
 	cmds.register("register", handlerRegister)
 	cmds.register("reset", handlerReset)
+	cmds.register("users", handlerUsers)
 
 	args := os.Args[1:]
 	err = cmds.run(s, command{name: args[0], args: args[1:]})
