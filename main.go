@@ -41,6 +41,7 @@ func main() {
 	cmds.register("users", handlerUsers)
 	cmds.register("agg", handlerAgg)
 	cmds.register("addfeed", handlerAddFeed)
+	cmds.register("feeds", handlerFeeds)
 
 	args := os.Args[1:]
 	err = cmds.run(s, command{name: args[0], args: args[1:]})

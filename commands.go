@@ -139,6 +139,21 @@ func handlerAddFeed(s *state, cmd command) error {
 	return nil
 }
 
+func handlerFeeds(s *state, cmd command) error {
+	if err := checkArgsLen(cmd.args, 0); err != nil {
+		return err
+	}
+	feeds, err := s.db.GetFeeds(context.Background())
+	if err != nil {
+		return err
+	}
+
+	for _, f := range feeds {
+		fmt.Printf("`%s` - %s, created by: %s\n", f.Name, f.Url, f.CreatedByName.String)
+	}
+	return nil
+}
+
 func checkArgsLen(args []string, expected int) error {
 	if len(args) != expected {
 		return fmt.Errorf("expected '%v' argument, got '%v'\n", expected, len(args))
