@@ -41,13 +41,9 @@ func main() {
 	}
 	cmds.register("login", handlerLogin)
 	cmds.register("register", handlerRegister)
+	cmds.register("reset", handlerReset)
 
 	args := os.Args[1:]
-	if len(args) != 2 {
-		fmt.Printf("Expected 2 argument, got: %v\n", len(args))
-		os.Exit(1)
-	}
-
 	err = cmds.run(s, command{name: args[0], args: args[1:]})
 	if err != nil {
 		fmt.Printf("Error running command: %v\n", err.Error())
@@ -56,8 +52,8 @@ func main() {
 }
 
 func handlerLogin(s *state, cmd command) error {
-	if len(cmd.args) != 1 {
-		return fmt.Errorf("expected '1' argument, got '%v'", len(cmd.args))
+	if err := checkArgsLen(cmd.args, 1); err != nil {
+		return err
 	}
 	_, err := s.db.GetUser(context.Background(), cmd.args[0])
 	if err != nil {
@@ -73,8 +69,8 @@ func handlerLogin(s *state, cmd command) error {
 }
 
 func handlerRegister(s *state, cmd command) error {
-	if len(cmd.args) != 1 {
-		return fmt.Errorf("expected '1' argument, got '%v'", len(cmd.args))
+	if err := checkArgsLen(cmd.args, 1); err != nil {
+		return err
 	}
 	params := database.CreateUserParams{
 		ID:        uuid.New(),
@@ -87,11 +83,29 @@ func handlerRegister(s *state, cmd command) error {
 		return err
 	}
 
-	fmt.Printf("User created: %v", user)
+	fmt.Printf("User created: %v\n", user)
 
 	err = s.config.SetUser(user.Name)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func handlerReset(s *state, cmd command) error {
+	if err := checkArgsLen(cmd.args, 0); err != nil {
+		return err
+	}
+	err := s.db.DeleteUsers(context.Background())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkArgsLen(args []string, expected int) error {
+	if len(args) != expected {
+		return fmt.Errorf("expected '%v' argument, got '%v'\n", expected, len(args))
 	}
 	return nil
 }
