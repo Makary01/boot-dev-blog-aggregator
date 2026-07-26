@@ -28,20 +28,24 @@ func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
+
 	feed := &RSSFeed{}
 	err = xml.NewDecoder(resp.Body).Decode(feed)
 	if err != nil {
 		return nil, err
 	}
+
 	feed.Channel.Title = html.UnescapeString(feed.Channel.Title)
 	feed.Channel.Description = html.UnescapeString(feed.Channel.Description)
 	for _, item := range feed.Channel.Item {
 		item.Title = html.UnescapeString(item.Title)
 		item.Description = html.UnescapeString(item.Description)
 	}
+
 	return feed, nil
 }
