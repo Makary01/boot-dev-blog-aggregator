@@ -45,6 +45,7 @@ func main() {
 	cmds.register("follow", ensureLoggedIn(handlerFollow))
 	cmds.register("following", ensureLoggedIn(handlerFollowing))
 	cmds.register("unfollow", ensureLoggedIn(handlerUnfollow))
+	cmds.register("browse", handlerBrowse)
 
 	args := os.Args[1:]
 	err = cmds.run(s, command{name: args[0], args: args[1:]})

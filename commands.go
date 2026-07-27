@@ -4,9 +4,16 @@ import (
 	"Makary01/boot-dev-blog-aggregator/internal/database"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
-	"github.com/google/uuid"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type command struct {
@@ -219,6 +226,49 @@ func handlerUnfollow(s *state, cmd command, user database.User) error {
 	)
 }
 
+func handlerBrowse(s *state, cmd command) error {
+	if err := checkArgsLen(cmd.args, 0, 1); err != nil {
+		return err
+	}
+	limit := 2
+	if len(cmd.args) == 1 {
+		l, err := strconv.Atoi(cmd.args[0])
+		if err != nil {
+			return err
+		}
+		limit = l
+	}
+
+	posts, err := s.db.GetPostsForUser(context.Background(), int32(limit))
+	if err != nil {
+		return err
+	}
+
+	for _, p := range posts {
+		fmt.Printf("Post %s:\n", p.Title)
+		if p.Description.Valid {
+			fmt.Printf("Description: %s\n", p.Description.String)
+		}
+		if p.PublishedAt.Valid {
+			fmt.Printf("Published At: %s\n", p.PublishedAt.Time.Format(time.Stamp))
+		}
+		fmt.Println()
+
+		resp, err := http.Get(p.Url)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Body: \n%s\n", string(body))
+	}
+	return nil
+}
+
 func scrapeFeeds(s *state) {
 	f, err := s.db.GetNextFeedToFetch(context.Background())
 	if err != nil {
@@ -247,18 +297,48 @@ func scrapeFeeds(s *state) {
 		return
 	}
 
-	fmt.Printf("Feed from: %s\n\n", f.Name)
 	for _, item := range rss.Channel.Item {
-		fmt.Println(item.Title)
+		t, err := formatTime(item.PubDate)
+		pubAt := sql.NullTime{
+			Time:  t,
+			Valid: err == nil,
+		}
+		postParams := database.CreatePostParams{
+			ID:          uuid.New(),
+			FeedID:      f.ID,
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+			PublishedAt: pubAt,
+			Title:       item.Title,
+			Description: sql.NullString{String: item.Description, Valid: item.Description == ""},
+			Url:         item.Link,
+		}
+		err = s.db.CreatePost(context.Background(), postParams)
+		if err != nil {
+			var pqErr *pq.Error
+			if errors.As(err, &pqErr) {
+				switch pqErr.Code {
+				case "23505":
+				default:
+					fmt.Printf("Error: %v\n", err.Error())
+				}
+			}
+		}
 	}
-	fmt.Println()
 }
 
-func checkArgsLen(args []string, expected int) error {
-	if len(args) != expected {
-		return fmt.Errorf("expected '%v' argument, got '%v'\n", expected, len(args))
+func checkArgsLen(args []string, expected ...int) error {
+	for _, ex := range expected {
+		if len(args) == ex {
+			return nil
+		}
 	}
-	return nil
+	expectedStrs := []string{}
+	for _, ex := range expected {
+		expectedStrs = append(expectedStrs, strconv.Itoa(ex))
+	}
+
+	return fmt.Errorf("expected: '%s' argument(s), got: '%n'\n", strings.Join(expectedStrs, "' OR '"), len(args))
 }
 
 func ensureLoggedIn(handler func(s *state, cmd command, user database.User) error) func(*state, command) error {
@@ -270,4 +350,26 @@ func ensureLoggedIn(handler func(s *state, cmd command, user database.User) erro
 		}
 		return handler(s, cmd, u)
 	}
+}
+
+func formatTime(val string) (t time.Time, err error) {
+	for _, layout := range []string{
+		time.Layout,
+		time.ANSIC,
+		time.UnixDate,
+		time.RubyDate,
+		time.RFC822,
+		time.RFC822Z,
+		time.RFC850,
+		time.RFC1123,
+		time.RFC1123Z,
+		time.RFC3339,
+		time.RFC3339Nano,
+	} {
+		t, err = time.Parse(layout, val)
+		if err == nil {
+			return t, nil
+		}
+	}
+	return t, err
 }
