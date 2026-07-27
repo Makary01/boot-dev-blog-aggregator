@@ -22,3 +22,11 @@ FROM feeds
 LEFT JOIN users 
     ON feeds.user_id = users.id 
 WHERE feeds.url = $1;
+
+-- name: MarkFeedFetched :exec
+UPDATE feeds
+SET updated_at = $1, last_fetch_at = $2
+WHERE id = $3;
+
+-- name: GetNextFeedToFetch :one
+SELECT * FROM feeds ORDER BY last_fetch_at ASC NULLS FIRST;

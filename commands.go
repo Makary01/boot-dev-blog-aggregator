@@ -3,6 +3,7 @@ package main
 import (
 	"Makary01/boot-dev-blog-aggregator/internal/database"
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/google/uuid"
 	"time"
@@ -100,16 +101,20 @@ func handlerUsers(s *state, cmd command) error {
 	return nil
 }
 
-func handlerAgg(_ *state, cmd command) error {
-	if err := checkArgsLen(cmd.args, 0); err != nil {
+func handlerAgg(s *state, cmd command) error {
+	if err := checkArgsLen(cmd.args, 1); err != nil {
 		return err
 	}
-	feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	time_between_reqs, err := time.ParseDuration(cmd.args[0])
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%v\n", feed)
-	return nil
+	fmt.Printf("Collecting feeds every %s\n", cmd.args[0])
+
+	ticker := time.NewTicker(time_between_reqs)
+	for ; ; <-ticker.C {
+		scrapeFeeds(s)
+	}
 }
 
 func handlerAddFeed(s *state, cmd command, user database.User) error {
@@ -212,6 +217,41 @@ func handlerUnfollow(s *state, cmd command, user database.User) error {
 		context.Background(),
 		database.DeleteFeedFollowingParams{Name: user.Name, Url: cmd.args[0]},
 	)
+}
+
+func scrapeFeeds(s *state) {
+	f, err := s.db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		fmt.Printf("Error when querying feed: '%v'", err.Error())
+		return
+	}
+
+	rss, err := fetchFeed(context.Background(), f.Url)
+	if err != nil {
+		fmt.Printf("Error when fetching feed: '%v'", err.Error())
+		return
+	}
+
+	params := database.MarkFeedFetchedParams{
+		ID:        f.ID,
+		UpdatedAt: time.Now(),
+		LastFetchAt: sql.NullTime{
+			Time:  time.Now(),
+			Valid: true,
+		},
+	}
+
+	err = s.db.MarkFeedFetched(context.Background(), params)
+	if err != nil {
+		fmt.Printf("Error when marking feed fetched: '%v'", err.Error())
+		return
+	}
+
+	fmt.Printf("Feed from: %s\n\n", f.Name)
+	for _, item := range rss.Channel.Item {
+		fmt.Println(item.Title)
+	}
+	fmt.Println()
 }
 
 func checkArgsLen(args []string, expected int) error {
