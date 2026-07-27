@@ -226,7 +226,7 @@ func handlerUnfollow(s *state, cmd command, user database.User) error {
 	)
 }
 
-func handlerBrowse(s *state, cmd command) error {
+func handlerBrowse(s *state, cmd command, user database.User) error {
 	if err := checkArgsLen(cmd.args, 0, 1); err != nil {
 		return err
 	}
@@ -239,7 +239,11 @@ func handlerBrowse(s *state, cmd command) error {
 		limit = l
 	}
 
-	posts, err := s.db.GetPostsForUser(context.Background(), int32(limit))
+	params := database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit:  int32(limit),
+	}
+	posts, err := s.db.GetPostsForUser(context.Background(), params)
 	if err != nil {
 		return err
 	}
