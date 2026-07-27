@@ -342,7 +342,7 @@ func checkArgsLen(args []string, expected ...int) error {
 		expectedStrs = append(expectedStrs, strconv.Itoa(ex))
 	}
 
-	return fmt.Errorf("expected: '%s' argument(s), got: '%n'\n", strings.Join(expectedStrs, "' OR '"), len(args))
+	return fmt.Errorf("expected: '%s' argument(s), got: '%s'\n", strings.Join(expectedStrs, "' OR '"), len(args))
 }
 
 func ensureLoggedIn(handler func(s *state, cmd command, user database.User) error) func(*state, command) error {
